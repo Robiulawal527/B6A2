@@ -1,0 +1,82 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  phone     String
+  role      Role     @default(customer)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bookings Booking[]
+
+  @@map("users")
+}
+
+model Vehicle {
+  id                  String             @id @default(uuid())
+  vehicle_name        String
+  type                VehicleType
+  registration_number String             @unique
+  daily_rent_price    Float
+  availability_status AvailabilityStatus @default(available)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  bookings            Booking[]
+
+  @@map("vehicles")
+}
+
+model Booking {
+  id            String        @id @default(uuid())
+  rent_start_date DateTime
+  rent_end_date   DateTime
+  total_price     Float
+  status        BookingStatus @default(active)
+  
+  customer_id   String
+  vehicle_id    String
+  
+  customer      User          @relation(fields: [customer_id], references: [id])
+  vehicle       Vehicle       @relation(fields: [vehicle_id], references: [id])
+  
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("bookings")
+}
+
+enum Role {
+  admin
+  customer
+}
+
+enum VehicleType {
+  car
+  bike
+  van
+  SUV
+}
+
+enum AvailabilityStatus {
+  available
+  booked
+}
+
+enum BookingStatus {
+  active
+  cancelled
+  returned
+}
