@@ -18,7 +18,9 @@ const getAllVehicles = catchAsync(async (req, res) => {
     sendResponse(res, {
         statusCode: httpStatus.OK,
         success: true,
-        message: 'Vehicles retrieved successfully',
+        message: result.length > 0 
+            ? 'Vehicles retrieved successfully' 
+            : 'No vehicles found',
         data: result,
     });
 });

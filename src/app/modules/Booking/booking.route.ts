@@ -8,7 +8,7 @@ const router = express.Router();
 
 router.post(
     '/',
-    auth('customer'),
+    auth('customer', 'admin'),
     validateRequest(BookingValidation.createBookingValidationSchema),
     BookingController.createBooking,
 );
@@ -25,12 +25,11 @@ router.get(
     BookingController.getMyBookings
 );
 
-// Unified PUT endpoint for Cancel (Customer) and Return (Admin)
 router.put(
     '/:id',
     auth('admin', 'customer'),
-    BookingController.returnBooking // Controller handles logic differentiation
+    validateRequest(BookingValidation.updateBookingValidationSchema),
+    BookingController.updateBooking
 )
-
 
 export const BookingRoutes = router;

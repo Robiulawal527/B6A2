@@ -16,7 +16,12 @@ const getAllUsers = async () => {
     return result;
 };
 
-const updateUser = async (id: string, payload: Partial<User>) => {
+const updateUser = async (id: string, userId: string, userRole: string, payload: Partial<User>) => {
+    // Customer can only update their own profile
+    if (userRole === 'customer' && id !== userId) {
+        throw new Error('You can only update your own profile');
+    }
+
     const result = await prisma.user.update({
         where: {
             id,

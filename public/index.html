@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vehicle Rental System - API Tester</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: #333; margin-bottom: 20px; }
+        .section { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .section h2 { color: #555; margin-bottom: 15px; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+        input, select, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        button:hover { background: #0056b3; }
+        .response { margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #007bff; max-height: 400px; overflow-y: auto; }
+        .response pre { white-space: pre-wrap; word-wrap: break-word; margin: 0; }
+        .token-display { background: #e9ecef; padding: 10px; border-radius: 4px; margin-bottom: 15px; word-break: break-all; font-size: 12px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+        .success { border-left-color: #28a745; }
+        .error { border-left-color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚗 Vehicle Rental System - API Tester</h1>
+        
+        <!-- Token Display -->
+        <div class="section">
+            <h2>Authentication Token</h2>
+            <div class="token-display" id="tokenDisplay">No token set. Please sign in.</div>
+            <button onclick="clearToken()">Clear Token</button>
+        </div>
+
+        <!-- Authentication Section -->
+        <div class="section">
+            <h2>🔐 Authentication</h2>
+            <div class="grid">
+                <div>
+                    <h3>Sign Up</h3>
+                    <div class="form-group">
+                        <label>Name:</label>
+                        <input type="text" id="signupName" placeholder="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label>Email:</label>
+                        <input type="email" id="signupEmail" placeholder="john@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Password:</label>
+                        <input type="password" id="signupPassword" placeholder="password123">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone:</label>
+                        <input type="text" id="signupPhone" placeholder="01712345678">
+                    </div>
+                    <div class="form-group">
+                        <label>Role:</label>
+                        <select id="signupRole">
+                            <option value="customer">Customer</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <button onclick="signup()">Sign Up</button>
+                    <div class="response" id="signupResponse"></div>
+                </div>
+                <div>
+                    <h3>Sign In</h3>
+                    <div class="form-group">
+                        <label>Email:</label>
+                        <input type="email" id="signinEmail" placeholder="john@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Password:</label>
+                        <input type="password" id="signinPassword" placeholder="password123">
+                    </div>
+                    <button onclick="signin()">Sign In</button>
+                    <div class="response" id="signinResponse"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vehicles Section -->
+        <div class="section">
+            <h2>🚗 Vehicles</h2>
+            <div class="grid">
+                <div>
+                    <h3>Create Vehicle (Admin Only)</h3>
+                    <div class="form-group">
+                        <label>Vehicle Name:</label>
+                        <input type="text" id="vehicleName" placeholder="Toyota Camry 2024">
+                    </div>
+                    <div class="form-group">
+                        <label>Type:</label>
+                        <select id="vehicleType">
+                            <option value="car">Car</option>
+                            <option value="bike">Bike</option>
+                            <option value="van">Van</option>
+                            <option value="SUV">SUV</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Registration Number:</label>
+                        <input type="text" id="regNumber" placeholder="ABC-1234">
+                    </div>
+                    <div class="form-group">
+                        <label>Daily Rent Price:</label>
+                        <input type="number" id="dailyPrice" placeholder="50">
+                    </div>
+                    <div class="form-group">
+                        <label>Availability Status:</label>
+                        <select id="availabilityStatus">
+                            <option value="available">Available</option>
+                            <option value="booked">Booked</option>
+                        </select>
+                    </div>
+                    <button onclick="createVehicle()">Create Vehicle</button>
+                    <div class="response" id="createVehicleResponse"></div>
+                </div>
+                <div>
+                    <h3>Get All Vehicles</h3>
+                    <button onclick="getAllVehicles()">Get All Vehicles</button>
+                    <div class="response" id="getVehiclesResponse"></div>
+                </div>
+            </div>
+            <div class="grid" style="margin-top: 20px;">
+                <div>
+                    <h3>Get Vehicle by ID</h3>
+                    <div class="form-group">
+                        <label>Vehicle ID:</label>
+                        <input type="text" id="vehicleId" placeholder="Enter vehicle ID">
+                    </div>
+                    <button onclick="getVehicleById()">Get Vehicle</button>
+                    <div class="response" id="getVehicleResponse"></div>
+                </div>
+                <div>
+                    <h3>Update Vehicle (Admin Only)</h3>
+                    <div class="form-group">
+                        <label>Vehicle ID:</label>
+                        <input type="text" id="updateVehicleId" placeholder="Enter vehicle ID">
+                    </div>
+                    <div class="form-group">
+                        <label>Vehicle Name:</label>
+                        <input type="text" id="updateVehicleName" placeholder="New name">
+                    </div>
+                    <div class="form-group">
+                        <label>Daily Rent Price:</label>
+                        <input type="number" id="updateDailyPrice" placeholder="New price">
+                    </div>
+                    <button onclick="updateVehicle()">Update Vehicle</button>
+                    <div class="response" id="updateVehicleResponse"></div>
+                </div>
+            </div>
+            <div style="margin-top: 20px;">
+                <h3>Delete Vehicle (Admin Only)</h3>
+                <div class="form-group">
+                    <label>Vehicle ID:</label>
+                    <input type="text" id="deleteVehicleId" placeholder="Enter vehicle ID">
+                </div>
+                <button onclick="deleteVehicle()">Delete Vehicle</button>
+                <div class="response" id="deleteVehicleResponse"></div>
+            </div>
+        </div>
+
+        <!-- Users Section -->
+        <div class="section">
+            <h2>👥 Users</h2>
+            <div class="grid">
+                <div>
+                    <h3>Get All Users (Admin Only)</h3>
+                    <button onclick="getAllUsers()">Get All Users</button>
+                    <div class="response" id="getUsersResponse"></div>
+                </div>
+                <div>
+                    <h3>Update User</h3>
+                    <div class="form-group">
+                        <label>User ID:</label>
+                        <input type="text" id="updateUserId" placeholder="Enter user ID">
+                    </div>
+                    <div class="form-group">
+                        <label>Name:</label>
+                        <input type="text" id="updateUserName" placeholder="New name">
+                    </div>
+                    <div class="form-group">
+                        <label>Email:</label>
+                        <input type="email" id="updateUserEmail" placeholder="New email">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone:</label>
+                        <input type="text" id="updateUserPhone" placeholder="New phone">
+                    </div>
+                    <button onclick="updateUser()">Update User</button>
+                    <div class="response" id="updateUserResponse"></div>
+                </div>
+            </div>
+            <div style="margin-top: 20px;">
+                <h3>Delete User (Admin Only)</h3>
+                <div class="form-group">
+                    <label>User ID:</label>
+                    <input type="text" id="deleteUserId" placeholder="Enter user ID">
+                </div>
+                <button onclick="deleteUser()">Delete User</button>
+                <div class="response" id="deleteUserResponse"></div>
+            </div>
+        </div>
+
+        <!-- Bookings Section -->
+        <div class="section">
+            <h2>📅 Bookings</h2>
+            <div class="grid">
+                <div>
+                    <h3>Create Booking</h3>
+                    <div class="form-group">
+                        <label>Vehicle ID:</label>
+                        <input type="text" id="bookingVehicleId" placeholder="Enter vehicle ID">
+                    </div>
+                    <div class="form-group">
+                        <label>Rent Start Date:</label>
+                        <input type="date" id="rentStartDate">
+                    </div>
+                    <div class="form-group">
+                        <label>Rent End Date:</label>
+                        <input type="date" id="rentEndDate">
+                    </div>
+                    <div class="form-group">
+                        <label>Customer ID (Admin Only):</label>
+                        <input type="text" id="bookingCustomerId" placeholder="Leave empty to use your ID">
+                    </div>
+                    <button onclick="createBooking()">Create Booking</button>
+                    <div class="response" id="createBookingResponse"></div>
+                </div>
+                <div>
+                    <h3>Get All Bookings</h3>
+                    <button onclick="getAllBookings()">Get All Bookings</button>
+                    <div class="response" id="getBookingsResponse"></div>
+                </div>
+            </div>
+            <div style="margin-top: 20px;">
+                <h3>Update Booking</h3>
+                <div class="form-group">
+                    <label>Booking ID:</label>
+                    <input type="text" id="updateBookingId" placeholder="Enter booking ID">
+                </div>
+                <div class="form-group">
+                    <label>Status:</label>
+                    <select id="bookingStatus">
+                        <option value="cancelled">Cancelled (Customer)</option>
+                        <option value="returned">Returned (Admin)</option>
+                    </select>
+                </div>
+                <button onclick="updateBooking()">Update Booking</button>
+                <div class="response" id="updateBookingResponse"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:5000/api/v1';
+        let authToken = localStorage.getItem('authToken') || '';
+
+        // Update token display on load
+        window.onload = () => {
+            updateTokenDisplay();
+        };
+
+        function updateTokenDisplay() {
+            document.getElementById('tokenDisplay').textContent = authToken || 'No token set. Please sign in.';
+        }
+
+        function clearToken() {
+            authToken = '';
+            localStorage.removeItem('authToken');
+            updateTokenDisplay();
+        }
+
+        async function apiCall(endpoint, method = 'GET', body = null, requiresAuth = false) {
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+            
+            if (requiresAuth && authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+
+            const options = {
+                method,
+                headers,
+            };
+
+            if (body) {
+                options.body = JSON.stringify(body);
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+                const data = await response.json();
+                return { status: response.status, data };
+            } catch (error) {
+                return { status: 500, data: { error: error.message } };
+            }
+        }
+
+        function displayResponse(elementId, response) {
+            const element = document.getElementById(elementId);
+            const isSuccess = response.status >= 200 && response.status < 300;
+            element.className = `response ${isSuccess ? 'success' : 'error'}`;
+            element.innerHTML = `<pre>${JSON.stringify(response, null, 2)}</pre>`;
+        }
+
+        // Authentication
+        async function signup() {
+            const response = await apiCall('/auth/signup', 'POST', {
+                name: document.getElementById('signupName').value,
+                email: document.getElementById('signupEmail').value,
+                password: document.getElementById('signupPassword').value,
+                phone: document.getElementById('signupPhone').value,
+                role: document.getElementById('signupRole').value,
+            });
+            displayResponse('signupResponse', response);
+        }
+
+        async function signin() {
+            const response = await apiCall('/auth/signin', 'POST', {
+                email: document.getElementById('signinEmail').value,
+                password: document.getElementById('signinPassword').value,
+            });
+            displayResponse('signinResponse', response);
+            if (response.data.data && response.data.data.token) {
+                authToken = response.data.data.token;
+                localStorage.setItem('authToken', authToken);
+                updateTokenDisplay();
+            }
+        }
+
+        // Vehicles
+        async function createVehicle() {
+            const response = await apiCall('/vehicles', 'POST', {
+                vehicle_name: document.getElementById('vehicleName').value,
+                type: document.getElementById('vehicleType').value,
+                registration_number: document.getElementById('regNumber').value,
+                daily_rent_price: parseFloat(document.getElementById('dailyPrice').value),
+                availability_status: document.getElementById('availabilityStatus').value,
+            }, true);
+            displayResponse('createVehicleResponse', response);
+        }
+
+        async function getAllVehicles() {
+            const response = await apiCall('/vehicles', 'GET');
+            displayResponse('getVehiclesResponse', response);
+        }
+
+        async function getVehicleById() {
+            const id = document.getElementById('vehicleId').value;
+            const response = await apiCall(`/vehicles/${id}`, 'GET');
+            displayResponse('getVehicleResponse', response);
+        }
+
+        async function updateVehicle() {
+            const id = document.getElementById('updateVehicleId').value;
+            const body = {};
+            if (document.getElementById('updateVehicleName').value) {
+                body.vehicle_name = document.getElementById('updateVehicleName').value;
+            }
+            if (document.getElementById('updateDailyPrice').value) {
+                body.daily_rent_price = parseFloat(document.getElementById('updateDailyPrice').value);
+            }
+            const response = await apiCall(`/vehicles/${id}`, 'PUT', body, true);
+            displayResponse('updateVehicleResponse', response);
+        }
+
+        async function deleteVehicle() {
+            const id = document.getElementById('deleteVehicleId').value;
+            const response = await apiCall(`/vehicles/${id}`, 'DELETE', null, true);
+            displayResponse('deleteVehicleResponse', response);
+        }
+
+        // Users
+        async function getAllUsers() {
+            const response = await apiCall('/users', 'GET', null, true);
+            displayResponse('getUsersResponse', response);
+        }
+
+        async function updateUser() {
+            const id = document.getElementById('updateUserId').value;
+            const body = {};
+            if (document.getElementById('updateUserName').value) {
+                body.name = document.getElementById('updateUserName').value;
+            }
+            if (document.getElementById('updateUserEmail').value) {
+                body.email = document.getElementById('updateUserEmail').value;
+            }
+            if (document.getElementById('updateUserPhone').value) {
+                body.phone = document.getElementById('updateUserPhone').value;
+            }
+            const response = await apiCall(`/users/${id}`, 'PUT', body, true);
+            displayResponse('updateUserResponse', response);
+        }
+
+        async function deleteUser() {
+            const id = document.getElementById('deleteUserId').value;
+            const response = await apiCall(`/users/${id}`, 'DELETE', null, true);
+            displayResponse('deleteUserResponse', response);
+        }
+
+        // Bookings
+        async function createBooking() {
+            const body = {
+                vehicle_id: document.getElementById('bookingVehicleId').value,
+                rent_start_date: document.getElementById('rentStartDate').value,
+                rent_end_date: document.getElementById('rentEndDate').value,
+            };
+            const customerId = document.getElementById('bookingCustomerId').value;
+            if (customerId) {
+                body.customer_id = customerId;
+            }
+            const response = await apiCall('/bookings', 'POST', body, true);
+            displayResponse('createBookingResponse', response);
+        }
+
+        async function getAllBookings() {
+            const response = await apiCall('/bookings', 'GET', null, true);
+            displayResponse('getBookingsResponse', response);
+        }
+
+        async function updateBooking() {
+            const id = document.getElementById('updateBookingId').value;
+            const response = await apiCall(`/bookings/${id}`, 'PUT', {
+                status: document.getElementById('bookingStatus').value,
+            }, true);
+            displayResponse('updateBookingResponse', response);
+        }
+    </script>
+</body>
+</html>

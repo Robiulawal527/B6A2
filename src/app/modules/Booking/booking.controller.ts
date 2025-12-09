@@ -5,7 +5,7 @@ import { BookingService } from './booking.service';
 
 const createBooking = catchAsync(async (req, res) => {
     const user = (req as any).user;
-    const result = await BookingService.createBooking(user.id, req.body);
+    const result = await BookingService.createBooking(user.id, user.role, req.body);
     sendResponse(res, {
         statusCode: httpStatus.CREATED,
         success: true,
@@ -16,15 +16,12 @@ const createBooking = catchAsync(async (req, res) => {
 
 const getAllBookings = catchAsync(async (req, res) => {
     const user = (req as any).user;
-    const role = req.query.role as string || user.role;
-    // req.user.role comes from auth middleware.
 
     const result = await BookingService.getAllBookings(user.id, user.role);
 
-    // Adjust message based on role? Or just generic?
     const message = user.role === 'admin'
         ? 'Bookings retrieved successfully'
-        : 'My Bookings retrieved successfully';
+        : 'Your bookings retrieved successfully';
 
     sendResponse(res, {
         statusCode: httpStatus.OK,
@@ -40,51 +37,34 @@ const getMyBookings = catchAsync(async (req, res) => {
     sendResponse(res, {
         statusCode: httpStatus.OK,
         success: true,
-        message: 'My Bookings retrieved successfully',
+        message: 'Your bookings retrieved successfully',
         data: result,
     });
 })
 
-const returnBooking = catchAsync(async (req, res) => {
+const updateBooking = catchAsync(async (req, res) => {
     const { id } = req.params;
-    // Check if it is a cancel or return based on user role or payload?
-    // Requirement says: PUT /api/v1/bookings/:bookingId
-    // Customer: Cancel booking
-    // Admin: Mark as "returned"
-    // So we need to switch logic based on role.
-
     const user = (req as any).user;
+    const { status } = req.body;
 
     let result;
     let message = "";
 
     if (user.role === 'customer') {
-        // Assume cancel logic
-        // "status": "cancelled" in body
-        if (req.body.status !== 'cancelled') {
-            // Maybe allow other updates? But requirements focus on cancel/return.
-            // If payload has status cancelled, treat as cancel.
-            // Actually requirement says: PUT /api/v1/bookings/:bookingId
-            // Request Body - Customer Cancellation: { "status": "cancelled" }
-            // Request Body - Admin Mark as Returned: { "status": "returned" }
-
-            // So better to delegate to service based on payload status or role + payload status.
+        if (status !== 'cancelled') {
+            throw new Error('Customers can only cancel bookings');
         }
-        result = await BookingService.cancelBooking(id, user.id);
+        result = await BookingService.cancelBooking(id, user.id, user.role);
         message = "Booking cancelled successfully";
     } else if (user.role === 'admin') {
-        if (req.body.status === 'returned') {
+        if (status === 'returned') {
             result = await BookingService.returnBooking(id);
-            message = "Booking marked as returned successfully";
+            message = "Booking marked as returned. Vehicle is now available";
+        } else if (status === 'cancelled') {
+            result = await BookingService.cancelBooking(id, user.id, user.role);
+            message = "Booking cancelled successfully";
         } else {
-            // Admin might want to cancel too?
-            // The requirements table says:
-            // Admin: Mark as "returned" (updates vehicle to "available")
-            // It doesn't explicitly say Admin can cancel, but typically they can.
-            // For now, let's stick to what is explicitly requested.
-            // Logic for return.
-            result = await BookingService.returnBooking(id);
-            message = "Booking marked as returned successfully";
+            throw new Error('Invalid status update');
         }
     }
 
@@ -100,5 +80,5 @@ export const BookingController = {
     createBooking,
     getAllBookings,
     getMyBookings,
-    returnBooking
+    updateBooking
 };

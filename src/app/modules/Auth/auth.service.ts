@@ -46,6 +46,7 @@ const signin = async (payload: Pick<User, 'email' | 'password'>) => {
     }
 
     const jwtPayload = {
+        id: user.id,
         email: user.email,
         role: user.role,
     };

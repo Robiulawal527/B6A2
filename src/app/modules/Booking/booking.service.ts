@@ -99,7 +99,7 @@ const getMyBookings = async (userId: string) => {
     return result;
 }
 
-const cancelBooking = async (bookingId: string, userId: string) => {
+const cancelBooking = async (bookingId: string, userId: string, userRole?: string) => {
     const booking = await prisma.booking.findUnique({
         where: {
             id: bookingId
@@ -110,13 +110,15 @@ const cancelBooking = async (bookingId: string, userId: string) => {
         throw new Error("Booking not found");
     }
 
-    if (booking.customer_id !== userId) {
+    // Only check ownership if user is not admin
+    if (userRole !== 'admin' && booking.customer_id !== userId) {
         throw new Error("You are not authorized to cancel this booking");
     }
 
     // Customer: Cancel booking (before start date only)
+    // Admin can cancel at any time
     const currentDate = new Date();
-    if (booking.rent_start_date <= currentDate) {
+    if (userRole !== 'admin' && booking.rent_start_date <= currentDate) {
         throw new Error("You cannot cancel a booking after it has started");
     }
 
