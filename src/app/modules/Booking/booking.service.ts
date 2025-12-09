@@ -1,174 +1,196 @@
-import { Booking, Prisma } from '@prisma/client';
+import { Booking } from '@prisma/client';
 import prisma from '../../utils/prisma';
-import AppError from '../../utils/AppError';
 import httpStatus from 'http-status';
 
-const createBooking = async (userId: string, payload: { vehicleId: string; startTime: string; endTime?: string }) => {
-    // Check if vehicle exists
+const createBooking = async (
+    userId: string,
+    payload: { vehicle_id: string; rent_start_date: string; rent_end_date: string },
+) => {
     const vehicle = await prisma.vehicle.findUnique({
         where: {
-            id: payload.vehicleId,
+            id: payload.vehicle_id,
         },
     });
 
     if (!vehicle) {
-        throw new AppError(httpStatus.NOT_FOUND, 'Vehicle not found');
+        throw new Error('Vehicle not found');
     }
 
-    if (vehicle.availability_status !== 'available') {
-        throw new AppError(httpStatus.BAD_REQUEST, 'Vehicle is not available');
+    if (vehicle.availability_status === 'booked') {
+        throw new Error('Vehicle is already booked');
     }
 
-    // Parse dates
-    const startDate = new Date(payload.startTime);
-    // If endTime not provided, maybe default duration? Prompt says "rent_end_date Required".
-    // So payload must have it. Validation should enforce.
-    // I'll assume payload has endTime or I can't calculate price.
-    // Wait, the API table for Bookings says "rent_end_date: Required".
-    // So I'll require it.
-    if (!payload.endTime) {
-        throw new AppError(httpStatus.BAD_REQUEST, 'End time is required');
-    }
-    const endDate = new Date(payload.endTime);
-
+    const startDate = new Date(payload.rent_start_date);
+    const endDate = new Date(payload.rent_end_date);
     const durationInMs = endDate.getTime() - startDate.getTime();
-    const durationInHours = durationInMs / (1000 * 60 * 60); // Hours
-    const durationInDays = Math.ceil(durationInHours / 24); // Days? "daily rate * duration". Usually booking is per day?
-    // If hourly, it would specify hourly rate. Table says "daily_rent_price".
-    // I will treat it as days.
-    const days = durationInDays > 0 ? durationInDays : 1;
+    const durationInDays = Math.ceil(durationInMs / (1000 * 60 * 60 * 24));
 
-    const totalPrice = days * vehicle.daily_rent_price;
+    if (durationInDays < 0) {
+        throw new Error("End date must be after start date");
+    }
+
+    const totalPrice = durationInDays * vehicle.daily_rent_price;
 
     const result = await prisma.$transaction(async (transactionClient) => {
-        // Create Booking
         const booking = await transactionClient.booking.create({
             data: {
                 customer_id: userId,
-                vehicle_id: payload.vehicleId,
+                vehicle_id: payload.vehicle_id,
                 rent_start_date: startDate,
                 rent_end_date: endDate,
                 total_price: totalPrice,
                 status: 'active',
             },
+            include: {
+                vehicle: true,
+                customer: true,
+            },
         });
 
-        // Update Vehicle Status
         await transactionClient.vehicle.update({
             where: {
-                id: payload.vehicleId,
+                id: payload.vehicle_id,
             },
             data: {
                 availability_status: 'booked',
             },
         });
 
+        console.log(booking);
         return booking;
     });
 
     return result;
 };
 
-const getAllBookings = async (user: any) => {
-    // Admin: View all. Customer: View own.
-    if (user.role === 'admin') {
-        return await prisma.booking.findMany({
+const getAllBookings = async (userId: string, role: string) => {
+    if (role === 'admin') {
+        const result = await prisma.booking.findMany({
+            include: {
+                vehicle: true,
+                customer: true,
+            },
+        });
+        return result;
+    }
+
+    const result = await prisma.booking.findMany({
+        where: {
+            customer_id: userId,
+        },
+        include: {
+            vehicle: true,
+            customer: true,
+        },
+    });
+    return result;
+};
+
+const getMyBookings = async (userId: string) => {
+    const result = await prisma.booking.findMany({
+        where: {
+            customer_id: userId
+        },
+        include: {
+            vehicle: true,
+            customer: true
+        }
+    })
+    return result;
+}
+
+const cancelBooking = async (bookingId: string, userId: string) => {
+    const booking = await prisma.booking.findUnique({
+        where: {
+            id: bookingId
+        }
+    })
+
+    if (!booking) {
+        throw new Error("Booking not found");
+    }
+
+    if (booking.customer_id !== userId) {
+        throw new Error("You are not authorized to cancel this booking");
+    }
+
+    // Customer: Cancel booking (before start date only)
+    const currentDate = new Date();
+    if (booking.rent_start_date <= currentDate) {
+        throw new Error("You cannot cancel a booking after it has started");
+    }
+
+    const result = await prisma.$transaction(async (transactionClient) => {
+        const updatedBooking = await transactionClient.booking.update({
+            where: {
+                id: bookingId
+            },
+            data: {
+                status: 'cancelled'
+            },
             include: {
                 vehicle: true,
                 customer: true
             }
-        });
-    } else {
-        return await prisma.booking.findMany({
+        })
+
+        await transactionClient.vehicle.update({
             where: {
-                customer_id: user.id
+                id: booking.vehicle_id
             },
-            include: {
-                vehicle: true,
-                customer: false // Don't need to see own profile nested?
+            data: {
+                availability_status: 'available'
             }
-        });
-    }
-}
-
-const cancelBooking = async (bookingId: string, userId: string) => {
-    // Customer can cancel if active
-    const booking = await prisma.booking.findUnique({
-        where: { id: bookingId }
-    });
-
-    if (!booking) {
-        throw new AppError(httpStatus.NOT_FOUND, 'Booking not found');
-    }
-
-    if (booking.customer_id !== userId) {
-        throw new AppError(httpStatus.FORBIDDEN, 'You can only cancel your own bookings');
-    }
-
-    // Check start date (must be before)
-    // "Cancel booking (before start date only)"
-    const now = new Date();
-    if (now >= booking.rent_start_date) {
-        throw new AppError(httpStatus.BAD_REQUEST, 'Cannot cancel booking after it has started'); // or if started?
-    }
-
-    const result = await prisma.$transaction(async (tx) => {
-        const updatedBooking = await tx.booking.update({
-            where: { id: bookingId },
-            data: { status: 'cancelled' }
-        });
-
-        // Update vehicle status
-        await tx.vehicle.update({
-            where: { id: booking.vehicle_id },
-            data: { availability_status: 'available' }
-        });
-
+        })
         return updatedBooking;
-    });
-
+    })
     return result;
+
 }
 
 const returnBooking = async (bookingId: string) => {
-    // Admin marks as returned
     const booking = await prisma.booking.findUnique({
-        where: { id: bookingId }
-    });
+        where: {
+            id: bookingId
+        }
+    })
 
     if (!booking) {
-        throw new AppError(httpStatus.NOT_FOUND, 'Booking not found');
+        throw new Error("Booking not found");
     }
 
-    if (booking.status !== 'active') {
-        throw new AppError(httpStatus.BAD_REQUEST, 'Booking is not active');
-    }
-
-    const result = await prisma.$transaction(async (tx) => {
-        const updatedBooking = await tx.booking.update({
-            where: { id: bookingId },
+    const result = await prisma.$transaction(async (transactionClient) => {
+        const updatedBooking = await transactionClient.booking.update({
+            where: {
+                id: bookingId
+            },
             data: {
-                status: 'returned',
-                // rent_end_date: new Date() ? No, keeping original scheduled end? Or actual return time?
-                // Table doesn't say "actual_return_date".
-                // I'll just update status.
+                status: 'returned'
+            },
+            include: {
+                vehicle: true,
+                customer: true
             }
-        });
+        })
 
-        await tx.vehicle.update({
-            where: { id: booking.vehicle_id },
-            data: { availability_status: 'available' }
-        });
+        await transactionClient.vehicle.update({
+            where: {
+                id: booking.vehicle_id
+            },
+            data: {
+                availability_status: 'available'
+            }
+        })
 
         return updatedBooking;
     });
-
     return result;
 }
 
 export const BookingService = {
     createBooking,
     getAllBookings,
+    getMyBookings,
     cancelBooking,
     returnBooking
 };

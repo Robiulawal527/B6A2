@@ -1,10 +1,12 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable no-unused-vars */
-import { ErrorRequestHandler } from 'express';
-// import { ZodError } from 'zod';
-// import config from '../config';
+import { NextFunction, Request, Response } from 'express';
+import httpStatus from 'http-status';
 
-const globalErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
+const globalErrorHandler = (
+    err: any,
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
     let statusCode = 500;
     let message = 'Something went wrong!';
     let errorSources = [
@@ -14,20 +16,31 @@ const globalErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
         },
     ];
 
-    //   if (err instanceof ZodError) {
-    //     // Handle Zod Error
-    //   } else if (err?.name === 'ValidationError') {
-    //     // Handle Mongoose/Prisma Validation Error if needed
-    //   } else if (err?.name === 'CastError') {
-    //     // Handle Cast Error
-    //   }
+    if (err.statusCode) {
+        statusCode = err.statusCode;
+        message = err.message;
+        errorSources = [
+            {
+                path: '',
+                message: err.message,
+            },
+        ];
+    } else if (err instanceof Error) {
+        message = err.message;
+        errorSources = [
+            {
+                path: '',
+                message: err.message,
+            },
+        ];
+    }
 
     return res.status(statusCode).json({
         success: false,
         message,
         errorSources,
-        // stack: config.node_env === 'development' ? err?.stack : null,
-        err,
+        // stack: config.NODE_ENV === 'development' ? err?.stack : null,
+        stack: err?.stack,
     });
 };
 

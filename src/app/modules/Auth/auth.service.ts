@@ -1,50 +1,31 @@
-import config from '../../config';
-import { Prisma } from '@prisma/client';
-import bcrypt from 'bcrypt';
-import jwt, { SignOptions } from 'jsonwebtoken';
-import AppError from '../../utils/AppError';
 import httpStatus from 'http-status';
-
+import { User } from '@prisma/client';
+import config from '../../config';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 import prisma from '../../utils/prisma';
 
-const signup = async (payload: Prisma.UserCreateInput) => {
-    // Check if user exists
-    const existingUser = await prisma.user.findUnique({
-        where: {
-            email: payload.email,
-        },
-    });
-
-    if (existingUser) {
-        throw new AppError(httpStatus.CONFLICT, 'User with this email already exists!');
-    }
-
-    // Hash password
+const signup = async (payload: User) => {
     const hashedPassword = await bcrypt.hash(
         payload.password,
         Number(config.bcrypt_salt_rounds),
     );
 
-    const newUser = await prisma.user.create({
-        data: {
-            ...payload,
-            password: hashedPassword,
-        },
-        select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            role: true,
-            createdAt: true,
-            updatedAt: true,
-        },
+    const userData = {
+        ...payload,
+        password: hashedPassword,
+    };
+
+    const result = await prisma.user.create({
+        data: userData,
     });
 
-    return newUser;
+    const { password, ...userWithoutPassword } = result;
+
+    return userWithoutPassword;
 };
 
-const signin = async (payload: Pick<Prisma.UserCreateInput, 'email' | 'password'>) => {
+const signin = async (payload: Pick<User, 'email' | 'password'>) => {
     const user = await prisma.user.findUnique({
         where: {
             email: payload.email,
@@ -52,36 +33,32 @@ const signin = async (payload: Pick<Prisma.UserCreateInput, 'email' | 'password'
     });
 
     if (!user) {
-        throw new AppError(httpStatus.NOT_FOUND, 'User not found!');
+        throw new Error('User does not exist');
     }
 
-    const isPasswordMatched = await bcrypt.compare(payload.password, user.password);
+    const isPasswordMatched = await bcrypt.compare(
+        payload.password,
+        user.password,
+    );
 
     if (!isPasswordMatched) {
-        throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid password!');
+        throw new Error('Password does not match');
     }
 
     const jwtPayload = {
         email: user.email,
         role: user.role,
-        id: user.id
     };
 
     const token = jwt.sign(jwtPayload, config.jwt.secret as string, {
         expiresIn: config.jwt.expires_in,
-    } as jwt.SignOptions);
+    });
+
+    const { password, ...userWithoutPassword } = user;
 
     return {
-        user: {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            phone: user.phone,
-            role: user.role,
-            createdAt: user.createdAt,
-            updatedAt: user.updatedAt,
-        },
         token,
+        user: userWithoutPassword,
     };
 };
 

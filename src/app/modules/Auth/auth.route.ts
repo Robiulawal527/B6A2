@@ -7,13 +7,13 @@ const router = express.Router();
 
 router.post(
     '/signup',
-    validateRequest(AuthValidation.signupValidationSchema),
+    validateRequest(AuthValidation.createUserValidationSchema),
     AuthController.signup,
 );
 
 router.post(
     '/signin',
-    validateRequest(AuthValidation.signinValidationSchema),
+    validateRequest(AuthValidation.loginValidationSchema),
     AuthController.signin,
 );
 

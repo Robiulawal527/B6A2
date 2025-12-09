@@ -1,34 +1,29 @@
 import express from 'express';
 import { VehicleController } from './vehicle.controller';
-import auth from '../../middlewares/auth';
-import { Role } from '@prisma/client';
 import validateRequest from '../../middlewares/validateRequest';
 import { VehicleValidation } from './vehicle.validation';
+import auth from '../../middlewares/auth';
 
 const router = express.Router();
 
 router.post(
     '/',
-    auth(Role.admin),
+    auth('admin'),
     validateRequest(VehicleValidation.createVehicleValidationSchema),
     VehicleController.createVehicle,
 );
 
 router.get('/', VehicleController.getAllVehicles);
 
-router.get('/:vehicleId', VehicleController.getSingleVehicle);
+router.get('/:id', VehicleController.getVehicleById);
 
 router.put(
-    '/:vehicleId',
-    auth(Role.admin),
+    '/:id',
+    auth('admin'),
     validateRequest(VehicleValidation.updateVehicleValidationSchema),
     VehicleController.updateVehicle,
 );
 
-router.delete(
-    '/:vehicleId',
-    auth(Role.admin),
-    VehicleController.deleteVehicle,
-);
+router.delete('/:id', auth('admin'), VehicleController.deleteVehicle);
 
 export const VehicleRoutes = router;

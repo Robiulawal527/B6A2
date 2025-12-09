@@ -1,7 +1,6 @@
 import express from 'express';
 import { BookingController } from './booking.controller';
 import auth from '../../middlewares/auth';
-import { Role } from '@prisma/client';
 import validateRequest from '../../middlewares/validateRequest';
 import { BookingValidation } from './booking.validation';
 
@@ -9,21 +8,29 @@ const router = express.Router();
 
 router.post(
     '/',
-    auth(Role.customer, Role.admin), // "Customer or Admin"
+    auth('customer'),
     validateRequest(BookingValidation.createBookingValidationSchema),
-    BookingController.createBooking
+    BookingController.createBooking,
 );
 
 router.get(
     '/',
-    auth(Role.admin, Role.customer),
+    auth('admin', 'customer'),
     BookingController.getAllBookings
 );
 
-router.put(
-    '/:bookingId',
-    auth(Role.admin, Role.customer),
-    BookingController.updateBooking
+router.get(
+    '/my-bookings',
+    auth('customer'),
+    BookingController.getMyBookings
 );
+
+// Unified PUT endpoint for Cancel (Customer) and Return (Admin)
+router.put(
+    '/:id',
+    auth('admin', 'customer'),
+    BookingController.returnBooking // Controller handles logic differentiation
+)
+
 
 export const BookingRoutes = router;

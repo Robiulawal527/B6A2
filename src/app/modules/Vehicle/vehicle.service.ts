@@ -1,21 +1,19 @@
-import { Prisma, Vehicle } from '@prisma/client';
+import { Vehicle } from '@prisma/client';
 import prisma from '../../utils/prisma';
-import AppError from '../../utils/AppError';
-import httpStatus from 'http-status';
 
-const createVehicle = async (payload: Prisma.VehicleCreateInput): Promise<Vehicle> => {
+const createVehicle = async (payload: Vehicle) => {
     const result = await prisma.vehicle.create({
         data: payload,
     });
     return result;
 };
 
-const getAllVehicles = async (): Promise<Vehicle[]> => {
+const getAllVehicles = async () => {
     const result = await prisma.vehicle.findMany();
     return result;
 };
 
-const getSingleVehicle = async (id: string): Promise<Vehicle | null> => {
+const getVehicleById = async (id: string) => {
     const result = await prisma.vehicle.findUnique({
         where: {
             id,
@@ -24,17 +22,7 @@ const getSingleVehicle = async (id: string): Promise<Vehicle | null> => {
     return result;
 };
 
-const updateVehicle = async (id: string, payload: Partial<Vehicle>): Promise<Vehicle> => {
-    const vehicle = await prisma.vehicle.findUnique({
-        where: {
-            id,
-        },
-    });
-
-    if (!vehicle) {
-        throw new AppError(httpStatus.NOT_FOUND, 'Vehicle not found');
-    }
-
+const updateVehicle = async (id: string, payload: Partial<Vehicle>) => {
     const result = await prisma.vehicle.update({
         where: {
             id,
@@ -44,21 +32,7 @@ const updateVehicle = async (id: string, payload: Partial<Vehicle>): Promise<Veh
     return result;
 };
 
-const deleteVehicle = async (id: string): Promise<Vehicle> => {
-    // Check if vehicle exists
-    const vehicle = await prisma.vehicle.findUnique({
-        where: {
-            id,
-        },
-    });
-
-    if (!vehicle) {
-        throw new AppError(httpStatus.NOT_FOUND, 'Vehicle not found');
-    }
-
-    // Check if active bookings exist (Requirement: "only if no active bookings exist")
-    // Since I don't have Booking model linked fully yet (I do in schema), I should check bookings.
-    // Wait, I have `bookings Booking[]` in Vehicle model.
+const deleteVehicle = async (id: string) => {
     const activeBookings = await prisma.booking.findFirst({
         where: {
             vehicle_id: id,
@@ -67,7 +41,7 @@ const deleteVehicle = async (id: string): Promise<Vehicle> => {
     });
 
     if (activeBookings) {
-        throw new AppError(httpStatus.BAD_REQUEST, 'Cannot delete vehicle with active bookings');
+        throw new Error('Vehicle cannot be deleted because it has active bookings');
     }
 
     const result = await prisma.vehicle.delete({
@@ -81,7 +55,7 @@ const deleteVehicle = async (id: string): Promise<Vehicle> => {
 export const VehicleService = {
     createVehicle,
     getAllVehicles,
-    getSingleVehicle,
+    getVehicleById,
     updateVehicle,
     deleteVehicle,
 };
