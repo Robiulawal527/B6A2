@@ -11,8 +11,7 @@ async function test() {
                 email: email,
                 password: "password123",
                 phone: "1234567890",
-                role: "customer",
-                address: "123 Test Lane"
+                role: "customer"
             })
         };
 
